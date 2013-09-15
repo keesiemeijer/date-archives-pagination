@@ -61,27 +61,24 @@ if ( !is_admin() ) {
 	 * @param bool    $previous Optional. Previous or next date archive link. Default: next date archive link (false).
 	 * @return string|void String (html link) when retrieving, void when displaying.
 	 */
-	function km_dap_get_date_archive_link(  $args = '', $previous = false ) {
+	function km_dap_get_date_archive_link( $args = '', $previous = false ) {
 		global $wp_locale;
+
+		$defaults = array(
+			'format'      => '',
+			'text'        => '',
+			'before_text' => '',
+			'after_text'  => '',
+			'query'       => $GLOBALS['wp_query'],
+			'echo'        => 1,
+		);
+
+		$args = wp_parse_args(  $args, $defaults );
+		extract( $args, EXTR_SKIP );
 
 		$link_html = '';
 
-		if ( is_date() ) {
-
-			$defaults = array(
-				'format'      => '',
-				'text'        => '',
-				'before_text' => '',
-				'after_text'  => '',
-				'query'       => $GLOBALS['wp_query'],
-				'echo'        => 1,
-			);
-
-			$args = wp_parse_args(  $args, $defaults );
-			extract( $args, EXTR_SKIP );
-
-			if ( !is_a( (object) $query, 'WP_Query' ) )
-				return '';
+		if ( is_date() && is_a( (object) $query, 'WP_Query' ) ) {
 
 			// get date sql for next and previous date based on current archive date
 			$sql = km_dap_date_archives_pagination_sql( $previous );
@@ -89,9 +86,7 @@ if ( !is_admin() ) {
 			if ( ( '' != $sql ) && isset( $query->query ) ) {
 
 				$temp_query = $query->query;
-
 				$query->query = (array) $query->query;
-
 
 				$reset_query_vars =  array(
 					'second' , 'minute', 'hour',
@@ -171,13 +166,12 @@ if ( !is_admin() ) {
 					}
 				}
 			}
+		}
 
-			if ( $echo )
-				echo $link_html;
-
-		} // if ( is_date () ) {}
-
-		return $link_html;
+		if ( $echo )
+			echo $link_html;
+		else
+			return $link_html;
 	}
 
 
@@ -247,12 +241,12 @@ if ( !is_admin() ) {
 
 		if ( is_month() && $year && $month ) {
 			$prev_date = date( 'Y-m-t H:i:s', mktime( 23, 59, 59, $month, 1, $year ) );
-			$next_date = $year . '-' .  $month . '-01 00:00:00';
+			$next_date = $year . '-' . $month . '-01 00:00:00';
 		}
 
 		if ( is_day() && $year && $month && $day ) {
 			$prev_date = date( 'Y-m-d H:i:s', mktime( 23, 59, 59, $month, $day, $year ) );
-			$next_date = $year . '-' .  $month . '-' .  $day . ' 00:00:00';
+			$next_date = $year . '-' . $month . '-' . $day . ' 00:00:00';
 		}
 
 		if ( $prev_date && $next_date ) {
