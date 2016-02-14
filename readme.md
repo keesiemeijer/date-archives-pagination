@@ -1,4 +1,4 @@
-# Custom Post Type Date Archives Pagination #
+# Date Archives Pagination #
 
 A WordPress plugin to paginate your date archives by year, month or day.
 
