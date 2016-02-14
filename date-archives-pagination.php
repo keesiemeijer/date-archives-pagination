@@ -1,261 +1,264 @@
 <?php
 /*
 Plugin Name: Date Archives Pagination
-Version: 0.1
-Plugin URI: http://keesiemeijer.wordpress.com/date-archives-pagination
-Description: Functions for theme developers to paginate date based archives by year, month or day.
+Version: 1.0.0
+Plugin URI:
+Description:  Functions for theme developers to paginate date based archives by year, month or day.
 Author: keesiemijer
 Author URI:
+Text Domain: custom-post-type-date-archives-pagination
+Domain Path: languages
 License: GPL v2
+
+Date Archives Pagination
+Copyright 2016  Kees Meijer  (email : keesie.meijer@gmail.com)
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 2 of the License, or
+(at your option) any later version. You may NOT assume that you can use any other version of the GPL.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-// functions can only be used in the front end.
-if ( !is_admin() ) {
+// Removes pagination on custom post type date archives
+add_action( 'pre_get_posts', 'dap_remove_date_archives_pagination' );
 
-	/**
-	 * Displays or returns next date archive HTML link.
-	 *
-	 * @since 0.1
-	 *
-	 * @see km_dap_get_date_archive_link() Type of arguments that can be changed.
-	 *
-	 * @param array|string $args Optional. Override default arguments.
-	 * @return string|void String (html link) when retrieving, void when displaying.
-	 */
-	function km_dap_next_date_archive_link( $args = '' ) {
-		km_dap_get_date_archive_link( $args );
+function dap_remove_date_archives_pagination( $query ) {
+	if ( !is_admin() && is_date() && $query->is_main_query() ) {
+		$query->set( 'nopaging', true );
+	}
+}
+
+/**
+ * Display the next date archive page link.
+ *
+ * @param string  $label Next page link text.
+ * @return void.
+ */
+function dap_next_posts_link( $label = null ) {
+	echo  dap_get_next_posts_link( $label );
+}
+
+
+/**
+ * Return the next date archive page link.
+ *
+ * @param string  $label Next page link text.
+ * @return string        HTML-formatted next date archive page link.
+ */
+function dap_get_next_posts_link( $label = null ) {
+	return dap_get_date_archive_link( $label, 'next' );
+}
+
+
+/**
+ * Display the previous date archive page link.
+ *
+ * @param string  $label Previous page link text.
+ * @return void
+ */
+function dap_previous_posts_link( $label = null ) {
+	echo dap_get_previous_posts_link( $label );
+}
+
+
+/**
+ * Return the previous date archive page link.
+ *
+ * @param string  $label Previous page link text.
+ * @return string        HTML-formatted previous date archive page link.
+ */
+function dap_get_previous_posts_link( $label = null ) {
+	return dap_get_date_archive_link( $label, 'previous' );
+}
+
+
+/**
+ * Returns a next adjacent date archive page date.
+ *
+ * @return string String with post date or empty string.
+ */
+function dap_get_next_date_archive_date() {
+
+	$date_post = dap_get_next_cpt_date_archive_post();
+	if ( !empty( $date_post ) && isset( $date_post->post_date ) ) {
+		$date = explode( ' ', $date_post->post_date );
+		return $date[0];
 	}
 
+	return '';
+}
 
-	/**
-	 * Displays or returns previous date archive HTML link.
-	 *
-	 * @since 0.1
-	 *
-	 * @see km_dap_get_date_archive_link() Type of arguments that can be changed.
-	 *
-	 * @param array|string $args Optional. Override default arguments.
-	 * @return string|void String (html link) when retrieving, void when displaying.
-	 */
-	function km_dap_previous_date_archive_link( $args = '' ) {
-		km_dap_get_date_archive_link( $args, true );
+
+/**
+ * Returns previous adjacent date archive page date.
+ *
+ * @return string String with post date or empty string.
+ */
+function dap_get_previous_date_archive_date() {
+
+	$date_post = dap_get_previous_cpt_date_archive_post();
+
+	if ( !empty( $date_post ) && isset( $date_post->post_date ) ) {
+		$date = explode( ' ', $date_post->post_date );
+		return $date[0];
 	}
 
+	return '';
+}
 
-	/**
-	 * Gets next or previous date archive html link.
-	 *
-	 * @since 0.1
-	 *
-	 * @global $wpdb
-	 * @global $wp_locale
-	 * @param array|string $args     {
-	 *     An array of arguments to override. Optional.
-	 *     @type string 'format'      PHP date format. Defaults to a date format depending on the date archive.
-	 *     @type string 'text'        Link text. Defaults to 'format' if left empty.
-	 *     @type string 'before_text' Text used before 'format' or 'text'.
-	 *     @type string 'after_text'  Text used after 'format' or 'text'.
-	 *     @type object 'query'       WP_Query object.
-	 *     @type bool   'echo'        Display or return the archive link. Default true.
-	 * }
-	 * @param bool    $previous Optional. Previous or next date archive link. Default: next date archive link (false).
-	 * @return string|void String (html link) when retrieving, void when displaying.
-	 */
-	function km_dap_get_date_archive_link( $args = '', $previous = false ) {
-		global $wp_locale;
 
-		$defaults = array(
-			'format'      => '',
-			'text'        => '',
-			'before_text' => '',
-			'after_text'  => '',
-			'query'       => $GLOBALS['wp_query'],
-			'echo'        => 1,
-		);
+/**
+ * Returns a next adjacent date archive page post.
+ *
+ * @return object Post object
+ */
+function dap_get_next_date_archive_post() {
+	return dap_get_adjacent_cpt_date_archive_post( 'next' );
+}
 
-		$args = wp_parse_args(  $args, $defaults );
-		extract( $args, EXTR_SKIP );
 
-		$link_html = '';
+/**
+ * Returns previous adjacent date archive page post.
+ *
+ * @return object Post object
+ */
+function dap_get_previous_date_archive_post() {
+	return dap_get_adjacent_cpt_date_archive_post( 'previous' );
+}
 
-		if ( is_date() && is_a( (object) $query, 'WP_Query' ) ) {
 
-			// get date sql for next and previous date based on current archive date
-			$sql = km_dap_date_archives_pagination_sql( $previous );
+/**
+ * Returns previous or next adjacent date archive page post.
+ *
+ * @param string  $adjacent 'next' or 'previous'.
+ * @return object|bool Post object or false (there is no next post).
+ */
+function dap_get_adjacent_date_archive_post( $adjacent = 'next' ) {
+	global $wp_query;
 
-			if ( ( '' != $sql ) && isset( $query->query ) ) {
-
-				$temp_query = $query->query;
-				$query->query = (array) $query->query;
-
-				$reset_query_vars =  array(
-					'second' , 'minute', 'hour',
-					'day', 'monthnum', 'year',
-					'w', 'm',
-					'paged', 'offset',
-				);
-
-				// unset date query vars (not needed for next and prev query)
-				foreach ( $reset_query_vars as $var ) {
-					unset( $query->query[ $var ] );
-				}
-
-				$order = ( $previous ) ? 'ASC' : 'DESC';
-
-				// get one next or previous post
-				$archive_args = array(
-					'posts_per_page'               => 1,
-					'order'                        => $order,
-					'no_found_rows'                => true,
-					'date_archives_pagination_sql' => $sql,
-				);
-
-				$args = array_merge( $query->query, $archive_args );
-
-				// no filters needed in WordPress 3.7 (http://core.trac.wordpress.org/changeset/25139)
-				add_filter( 'posts_where', 'km_dap_date_archives_pagination_posts_where', 10, 2 );
-				$date_query = new WP_Query( $args );
-				remove_filter( 'posts_where', 'km_dap_date_archives_pagination_posts_where', 10, 2 );
-
-				// clean up after query
-				wp_reset_postdata();
-
-				// restore the query object
-				$query->query = $temp_query;
-
-				// check if there is a next or previous post
-				if ( $date_query->have_posts() ) {
-
-					$date = explode( ' ', $date_query->post->post_date );
-
-					if ( isset( $date[0] ) && $date[0] ) {
-
-						list( $year, $month, $day ) = explode( '-', $date[0] );
-						$url = '';
-
-						if ( is_year() ) {
-							$url = get_year_link( $year );
-							if ( '' == $text )
-								$text = sprintf( '%d', $year );
-						}
-
-						if ( is_month() ) {
-							$url = get_month_link( $year, $month );
-							if ( '' == $text )
-								$text = sprintf( __( '%1$s %2$d' ), $wp_locale->get_month( $month ), $year );
-						}
-
-						if ( is_day() ) {
-							$url = get_day_link( $year, $month, $day );
-							if ( '' == $text ) {
-								$date_format = get_option( 'date_format' );
-								$date_format = ( $date_format ) ? $date_format : 'Y/m/d';
-								$text = mysql2date( $date_format, $date[0] );
-							}
-						}
-
-						$url = esc_url( $url );
-
-						if ( '' != $format )
-							$text = mysql2date( (string) $format, $date[0] );
-
-						$text = wptexturize( $text );
-
-						if ( ( '' != $url ) && ( '' != $text ) )
-							$link_html = "\t<a href='$url'>{$before_text}{$text}{$after_text}</a>\n";
-					}
-				}
-			}
-		}
-
-		if ( $echo )
-			echo $link_html;
-		else
-			return $link_html;
+	if ( !is_date() ) {
+		return;
 	}
 
+	$query = $wp_query->query;
 
-	add_filter( 'query_vars', 'km_dap_date_archives_pagination_query_var' );
+	$post_type   = isset( $query['post_type'] ) ? $query['post_type'] : 'post';
+	$post_status = isset( $query['post_status'] ) ? $query['post_status'] : 'publish';
+	
+	$reset_query_vars =  array(
+		'second' , 'minute', 'hour',
+		'day', 'monthnum', 'year',
+		'w', 'm',
+		'paged', 'offset',
+	);
 
-	/**
-	 * Adds query var 'date_archives_pagination_sql' to the public query vars.
-	 *
-	 * Called by 'query_vars' filter.
-	 *
-	 * @since 0.1
-	 *
-	 * @param array   $query_vars
-	 * @return array
-	 */
-	function km_dap_date_archives_pagination_query_var( $query_vars ) {
-
-		$query_vars[] = 'date_archives_pagination_sql';
-
-		return $query_vars;
+	// unset date query vars (not needed for next and prev query)
+	foreach ( $reset_query_vars as $var ) {
+		unset( $query[ $var ] );
 	}
 
+	$previous = ( 'previous' === strtolower( $adjacent ) ) ? true : false;
+	$order    = ( $previous ) ? 'ASC' : 'DESC';
+	$type     = ( $previous ) ? 'after' : 'before';
 
-	/**
-	 * Adds sql to where clause if query var date_archives_pagination_sql is set.
-	 * Called by 'posts_where' filter.
-	 *
-	 * @since 0.1
-	 *
-	 * @param string  $where where clause string.
-	 * @param object  $query WP_Query opject.
-	 * @return string where clause.
-	 */
-	function km_dap_date_archives_pagination_posts_where( $where, $query ) {
+	// Get the date from the current post object
+	$year     = get_the_date( 'Y' );
+	$month    = get_the_date( 'm' );
+	$day      = get_the_date( 'd' );
 
-		$sql = $query->get( 'date_archives_pagination_sql' );
-		if ( !empty( $sql ) )
-			$where .=  $sql;
+	$args = array(
+		'post_type'      => $post_type,
+		'post_status'    => $post_status,
+		'posts_per_page' => 1,
+		'order'          => $order,
+		'no_found_rows'  => true,
+	);
 
-		return $where;
+	if ( is_year() && $year ) {
+		$args['date_query'][0][ $type ] = array( 'year' => $year );
 	}
 
-
-	/**
-	 * Returns where sql for next and previous date archives.
-	 *
-	 * @since 0.1
-	 *
-	 * @global $wpdb
-	 * @param bool    $previous Previous or next date archive sql. Default: next date archive sql (false).
-	 * @return string Where sql for next or previous date archives or empty string.
-	 */
-	function km_dap_date_archives_pagination_sql( $previous = false ) {
-		global $wpdb;
-
-		// get the date from a post object in a date archive
-		$year =  get_the_date( 'Y' );
-		$month =  get_the_date( 'm' );
-		$day =  get_the_date( 'd' );
-
-		$prev_date = $next_date = $prev_sql = $next_sql = '';
-
-		if ( is_year() && $year ) {
-			$prev_date = date( 'Y-m-t H:i:s', mktime( 23, 59, 59, 12, 1, $year ) );
-			$next_date = $year . '-01-01 00:00:00';
-		}
-
-		if ( is_month() && $year && $month ) {
-			$prev_date = date( 'Y-m-t H:i:s', mktime( 23, 59, 59, $month, 1, $year ) );
-			$next_date = $year . '-' . $month . '-01 00:00:00';
-		}
-
-		if ( is_day() && $year && $month && $day ) {
-			$prev_date = date( 'Y-m-d H:i:s', mktime( 23, 59, 59, $month, $day, $year ) );
-			$next_date = $year . '-' . $month . '-' . $day . ' 00:00:00';
-		}
-
-		if ( $prev_date && $next_date ) {
-			$prev_sql = $wpdb->prepare( " AND $wpdb->posts.post_date > %s", $prev_date );
-			$next_sql = $wpdb->prepare( " AND $wpdb->posts.post_date < %s", $next_date );
-		}
-
-		return ( $previous ) ? $prev_sql : $next_sql;
+	if ( is_month() && $year && $month ) {
+		$args['date_query'][0][ $type ] = array( 'year' => $year, 'month' => $month );
 	}
 
+	if ( is_day() && $year && $month && $day ) {
+		$args['date_query'][0][ $type ] = array( 'year' => $year, 'month' => $month, 'day' => $day );
+	}
 
-} // if ( !is_admin() )
+	$args = array_merge( $query, $args );
+
+	$post = get_posts( $args );
+
+	if ( isset( $post[0] ) ) {
+		$post = $post[0];
+	} else {
+		$post = false;
+	}
+
+	return $post;
+}
+
+
+/**
+ * Returns a HTML-formatted next or previous adjacent date archive page link.
+ *
+ * @param string  $label    Link text.
+ * @param string  $adjacent 'next' or 'previous'
+ * @return [type]            HTML-formatted next or previous date archive page link.
+ */
+function dap_get_date_archive_link( $label = null, $adjacent = 'next' ) {
+	global $wp_locale;
+
+	if ( !is_date() ) {
+		return '';
+	}
+
+	$post     = dap_get_adjacent_date_archive_post( $adjacent );
+	$previous = ( 'previous' === strtolower( $adjacent ) ) ? true : false;
+
+	if ( !isset( $post->post_date ) ) {
+		return '';
+	}
+
+	$year  = get_the_date( 'Y', $post );
+	$month = get_the_date( 'm', $post );
+	$day   = get_the_date( 'd', $post );
+
+	$url  = '';
+	$text = '';
+	if ( is_year() ) {
+		$url  = get_year_link( $year );
+		$text = sprintf( '%d', $year );
+	}
+
+	if ( is_month() && $year && $month ) {
+		$url  = get_month_link( $year, $month );
+		$text = sprintf( __( '%1$s %2$d' ), $wp_locale->get_month( $month ), $year );
+	}
+
+	if ( is_day() && $year && $month && $day ) {
+		$url  = get_day_link( $year, $month, $day );
+		$date_format = get_option( 'date_format' );
+		$date_format = ( $date_format ) ? $date_format : 'Y/m/d';
+		$text = mysql2date( $date_format, $post->post_date );
+	}
+
+	if ( $label ) {
+		$text = trim( $label );
+	}
+
+	if ( $url && $text ) {
+		return "<a href='$url'>{$text}</a>";
+	}
+
+	return '';
+}
